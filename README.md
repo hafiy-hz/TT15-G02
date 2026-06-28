@@ -15,7 +15,7 @@ ALL flag-setting logic (OF/UF/CF/ZF) — centralized here for consistency
 Sample Program #1 (e.g. factorial of 4)
 Rubric coverage: 2nd inheritance hierarchy (Instruction→subclasses), flags 2 marks, 1 of 3 programs
 
-Member 3(hafiy) — Bit Ops, Memory Access, Queue
+Member 3(hafiy) — Bit Ops, Memory Access, Queue (src folder)
 
 ROL, ROR, SHL, SHR (binary conversion logic)
 LOAD/STORE (both addressing modes each)
