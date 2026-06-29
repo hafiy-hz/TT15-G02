@@ -1,0 +1,4 @@
+INPUT R0
+MOV R1, 15
+MOV R2, R0
+MOV R3, [R1]
