@@ -116,10 +116,9 @@ public:
 class IncInstruction : public Instruction {
 private:
     int destReg;
-    int srcReg;
 
 public:
-    IncInstruction(int dest, int src) : destReg(dest), srcReg(src) {}
+    IncInstruction(int dest, int src) : destReg(dest) {}
 
     void execute(CPU& cpu) override {
 
@@ -143,10 +142,9 @@ public:
 class DecInstruction : public Instruction {
 private:
     int destReg;
-    int srcReg;
 
 public:
-    DecInstruction(int dest, int src) : destReg(dest), srcReg(src) {}
+    DecInstruction(int dest, int src) : destReg(dest) {}
 
     void execute(CPU& cpu) override {
 
@@ -172,7 +170,6 @@ private:
     int destReg;
 
 public:
-    // Notice this only takes ONE register (dest), not a source (src)
     ResetInstruction(int dest) : destReg(dest) {}
 
     void execute(CPU& cpu) override {
@@ -191,5 +188,33 @@ public:
 
         // 5. Move to the next line of the text file
         cpu.incrementPC(); 
+    }
+};
+
+// DivInstruction or DIV (/)
+class DivInstruction : public Instruction {
+private:
+    int destReg;
+    int srcReg;
+
+public:
+    DivInstruction(int dest, int src) : destReg(dest), srcReg(src) {}
+
+    void execute(CPU& cpu) override {
+        signed char val1 = cpu.getRegister(destReg).getValue();
+        signed char val2 = cpu.getRegister(srcReg).getValue();
+        cpu.getFlags().resetAll();
+
+        // to prevent crashing
+        if (val2 == 0) {
+            std::cout << "Error: Division by zero!" << std::endl;
+            cpu.incrementPC();
+            return; 
+        }
+
+        int rawResult = (int)val1 / (int)val2;
+        FlagHelper::updateFlags(cpu, rawResult);
+        cpu.getRegister(destReg).setValue(static_cast<signed char>(rawResult));
+        cpu.incrementPC();
     }
 };
