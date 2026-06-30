@@ -4,7 +4,7 @@
 #include <sstream>
 
 // Virtual Machine and Assembly Language Interpreter
-// Adam Syafiq
+// Combined Workspace: Adam Syafiq, Adam Harith, & Hafiy (Member 3)
 
 template <typename T>
 class MyVector {
@@ -38,6 +38,38 @@ public:
 
     T& operator[](int index) { return arr[index]; }
     int size() const { return current_size; }
+};
+
+// FIXED: Added Custom Queue Class directly here for single-file assignment rules
+template <typename T>
+class MyQueue {
+private:
+    T arr[200];
+    int frontIndex;
+    int rearIndex;
+    int count;
+public:
+    MyQueue() : frontIndex(0), rearIndex(0), count(0) {}
+    
+    void enqueue(T val) {
+        if (count < 200) {
+            arr[rearIndex] = val;
+            rearIndex = (rearIndex + 1) % 200;
+            count++;
+        }
+    }
+    
+    T dequeue() {
+        if (count > 0) {
+            T val = arr[frontIndex];
+            frontIndex = (frontIndex + 1) % 200;
+            count--;
+            return val;
+        }
+        exit(1);
+    }
+    
+    bool isEmpty() const { return count == 0; }
 };
 
 template <typename T>
@@ -137,9 +169,14 @@ public:
     int getPC() const { return pc; }
     void setPC(int val) { pc = val; }
     void incrementPC() { pc++; }
+    
+    // FIXED: Added missing stack index methods
+    void incrementSI() { si++; }
+    void decrementSI() { si--; }
+    int getSI() const { return si; }
+
     MyStack<signed char>& getStack() { return systemStack; }
 };
-
 
 // Formatting and Output - Adam Syafiq
 
@@ -186,8 +223,7 @@ public:
     }
 };
 
-
-// Polymorphic Instructions -Adam Syafiq
+// Polymorphic Instructions - Adam Syafiq
 
 class Instruction {
 public:
@@ -266,16 +302,149 @@ public:
 
 
 // ============================================================================
-// PLACEHOLDERS FOR MEMBER 2 & MEMBER 3 INSTRUCTIONS
+// MEMBER 2 ARITHMETIC INSTRUCTIONS
 // ============================================================================
+// Written by: Adam Harith
 
-// TODO: Member 2 adds ArithmeticInstruction (ADD, SUB, MUL, DIV, INC, DEC) here
-// TODO: Member 3 adds ShiftInstruction (ROL, ROR, SHL, SHR), Load/Store, Stack (PUSH, POP) here
+class FlagHelper {
+public:
+    static void updateFlags(CPU& cpu, int rawResult) {
+        if (rawResult == 0) {
+            cpu.getFlags().setZF(true);
+        }
+        if (rawResult > 127) {
+            cpu.getFlags().setOF(true);
+            cpu.getFlags().setCF(true); 
+        }
+        if (rawResult < -128) {
+            cpu.getFlags().setUF(true);
+            cpu.getFlags().setCF(true); 
+        }
+    }
+};
 
-// fiy
+class AddInstruction : public Instruction {
+private:
+    int destReg;
+    int srcReg;
+public:
+    AddInstruction(int dest, int src) : destReg(dest), srcReg(src) {}
+    void execute(CPU& cpu) override {
+        signed char val1 = cpu.getRegister(destReg).getValue();
+        signed char val2 = cpu.getRegister(srcReg).getValue();
+        cpu.getFlags().resetAll();
+        int rawResult = (int)val1 + (int)val2;
+        FlagHelper::updateFlags(cpu, rawResult);
+        cpu.getRegister(destReg).setValue(static_cast<signed char>(rawResult));
+        cpu.incrementPC(); 
+    }
+};
 
-// ShiftInstruction (ROL, ROR, SHL, SHR), Load/Store, Stack (PUSH, POP)
-// Written by: Member 3
+class SubInstruction : public Instruction {
+private:
+    int destReg;
+    int srcReg;
+public:
+    SubInstruction(int dest, int src) : destReg(dest), srcReg(src) {}
+    void execute(CPU& cpu) override {
+        signed char val1 = cpu.getRegister(destReg).getValue();
+        signed char val2 = cpu.getRegister(srcReg).getValue();
+        cpu.getFlags().resetAll();
+        int rawResult = (int)val1 - (int)val2;
+        FlagHelper::updateFlags(cpu, rawResult);
+        cpu.getRegister(destReg).setValue(static_cast<signed char>(rawResult));
+        cpu.incrementPC(); 
+    }
+};
+
+class MulInstruction : public Instruction {
+private:
+    int destReg;
+    int srcReg;
+public:
+    MulInstruction(int dest, int src) : destReg(dest), srcReg(src) {}
+    void execute(CPU& cpu) override {
+        signed char val1 = cpu.getRegister(destReg).getValue();
+        signed char val2 = cpu.getRegister(srcReg).getValue();
+        cpu.getFlags().resetAll();
+        int rawResult = (int)val1 * (int)val2;
+        FlagHelper::updateFlags(cpu, rawResult);
+        cpu.getRegister(destReg).setValue(static_cast<signed char>(rawResult));
+        cpu.incrementPC(); 
+    }
+};
+
+class IncInstruction : public Instruction {
+private:
+    int destReg;
+public:
+    IncInstruction(int dest) : destReg(dest) {}
+    void execute(CPU& cpu) override {
+        signed char val1 = cpu.getRegister(destReg).getValue();
+        cpu.getFlags().resetAll();
+        int rawResult = (int)val1 + 1;
+        FlagHelper::updateFlags(cpu, rawResult);
+        cpu.getRegister(destReg).setValue(static_cast<signed char>(rawResult));
+        cpu.incrementPC(); 
+    }
+};
+
+class DecInstruction : public Instruction {
+private:
+    int destReg;
+public:
+    DecInstruction(int dest) : destReg(dest) {}
+    void execute(CPU& cpu) override {
+        signed char val1 = cpu.getRegister(destReg).getValue();
+        cpu.getFlags().resetAll();
+        int rawResult = (int)val1 - 1;
+        FlagHelper::updateFlags(cpu, rawResult);
+        cpu.getRegister(destReg).setValue(static_cast<signed char>(rawResult));
+        cpu.incrementPC(); 
+    }
+};
+
+// FIXED: Renamed class to differentiate Register clearing vs Flag resetting
+class ResetRegisterInstruction : public Instruction {
+private:
+    int destReg;
+public:
+    ResetRegisterInstruction(int dest) : destReg(dest) {}
+    void execute(CPU& cpu) override {
+        cpu.getFlags().resetAll();
+        FlagHelper::updateFlags(cpu, 0);
+        cpu.getRegister(destReg).setValue(0);
+        cpu.incrementPC(); 
+    }
+};
+
+class DivInstruction : public Instruction {
+private:
+    int destReg;
+    int srcReg;
+public:
+    DivInstruction(int dest, int src) : destReg(dest), srcReg(src) {}
+    void execute(CPU& cpu) override {
+        signed char val1 = cpu.getRegister(destReg).getValue();
+        signed char val2 = cpu.getRegister(srcReg).getValue();
+        cpu.getFlags().resetAll();
+        if (val2 == 0) {
+            std::cout << "Error: Division by zero!" << std::endl;
+            cpu.incrementPC();
+            return; 
+        }
+        int rawResult = (int)val1 / (int)val2;
+        FlagHelper::updateFlags(cpu, rawResult);
+        cpu.getRegister(destReg).setValue(static_cast<signed char>(rawResult));
+        cpu.incrementPC();
+    }
+};
+
+
+// ============================================================================
+// MEMBER 3 SHIFT, ROTATE, MEMORY ACCESS, STACK INSTRUCTIONS
+// ============================================================================
+// Written by: Member 3 (Hafiy)
  
 void toBinary(signed char value, int bits[8]) {
     unsigned char uval = (unsigned char)value;
@@ -298,7 +467,12 @@ public:
         toBinary(cpu.getRegister(destReg).getValue(), bits);
         int c = count % 8;
         for (int i = 0; i < 8; i++) result[i] = bits[(i + c) % 8];
-        cpu.getRegister(destReg).setValue(toDecimal(result));
+        signed char resVal = toDecimal(result);
+        cpu.getRegister(destReg).setValue(resVal);
+        
+        // FIXED: Added missing assignment flag status checks
+        cpu.getFlags().resetAll();
+        if (resVal == 0) cpu.getFlags().setZF(true);
         cpu.incrementPC();
     }
 };
@@ -313,7 +487,11 @@ public:
         toBinary(cpu.getRegister(destReg).getValue(), bits);
         int c = count % 8;
         for (int i = 0; i < 8; i++) result[i] = bits[(i - c + 8) % 8];
-        cpu.getRegister(destReg).setValue(toDecimal(result));
+        signed char resVal = toDecimal(result);
+        cpu.getRegister(destReg).setValue(resVal);
+        
+        cpu.getFlags().resetAll();
+        if (resVal == 0) cpu.getFlags().setZF(true);
         cpu.incrementPC();
     }
 };
@@ -324,14 +502,17 @@ private:
 public:
     ShiftLeftInstruction(int reg, int c) : destReg(reg), count(c) {}
     void execute(CPU& cpu) override {
-        if (count >= 8) {
-            cpu.getRegister(destReg).setValue(0);
-        } else {
+        signed char resVal = 0;
+        if (count < 8) {
             int bits[8], result[8];
             toBinary(cpu.getRegister(destReg).getValue(), bits);
             for (int i = 0; i < 8; i++) result[i] = (i + count < 8) ? bits[i + count] : 0;
-            cpu.getRegister(destReg).setValue(toDecimal(result));
+            resVal = toDecimal(result);
         }
+        cpu.getRegister(destReg).setValue(resVal);
+        
+        cpu.getFlags().resetAll();
+        if (resVal == 0) cpu.getFlags().setZF(true);
         cpu.incrementPC();
     }
 };
@@ -342,14 +523,17 @@ private:
 public:
     ShiftRightInstruction(int reg, int c) : destReg(reg), count(c) {}
     void execute(CPU& cpu) override {
-        if (count >= 8) {
-            cpu.getRegister(destReg).setValue(0);
-        } else {
+        signed char resVal = 0;
+        if (count < 8) {
             int bits[8], result[8];
             toBinary(cpu.getRegister(destReg).getValue(), bits);
             for (int i = 0; i < 8; i++) result[i] = (i - count >= 0) ? bits[i - count] : 0;
-            cpu.getRegister(destReg).setValue(toDecimal(result));
+            resVal = toDecimal(result);
         }
+        cpu.getRegister(destReg).setValue(resVal);
+        
+        cpu.getFlags().resetAll();
+        if (resVal == 0) cpu.getFlags().setZF(true);
         cpu.incrementPC();
     }
 };
@@ -422,19 +606,19 @@ private:
 public:
     PopInstruction(int reg) : destReg(reg) {}
     void execute(CPU& cpu) override {
-        signed char val = cpu.getStack().pop(); // crashes on empty per MyStack::pop()
+        signed char val = cpu.getStack().pop();
         cpu.decrementSI();
         cpu.getRegister(destReg).setValue(val);
         cpu.incrementPC();
     }
 };
 
-// RESET <Flag> - resets a single named flag (CF/OF/UF/ZF) to 0 (section 3.10)
-class ResetInstruction : public Instruction {
+// FIXED: Named explicitly as ResetFlagInstruction to avoid constructor type clashing
+class ResetFlagInstruction : public Instruction {
 private:
     std::string flagName;
 public:
-    ResetInstruction(std::string flag) : flagName(flag) {}
+    ResetFlagInstruction(std::string flag) : flagName(flag) {}
     void execute(CPU& cpu) override {
         if (flagName == "CF") cpu.getFlags().setCF(false);
         else if (flagName == "OF") cpu.getFlags().setOF(false);
@@ -455,16 +639,12 @@ int parseInt(std::string s) {
     return val * sign;
 }
 
-// fiy
-
-
 // Assembly Runner - Adam Syafiq
 class Runner {
 private:
-    MyVector<Instruction*> program; // Custom vector tracking polymorphic instruction for pointers
-    CPU cpu;                        // The virtual machine hardware chassis instance
+    MyVector<Instruction*> program; 
+    CPU cpu;                        
 
-    // Convert a string like "R3" or "[R1]" into a raw integer ID
     int getRegisterId(std::string regStr) {
         for (char c : regStr) {
             if (c >= '0' && c <= '7') {
@@ -474,12 +654,10 @@ private:
         return 0; 
     }
 
-    // Strips a single trailing comma off a parsed token, e.g. "R0," -> "R0"
     void stripComma(std::string& s) {
         if (!s.empty() && s.back() == ',') s.pop_back();
     }
 
-    // Handles INPUT and the three MOV addressing modes (Member 1 territory)
     bool parseMovInput(const std::string& op, int r1, std::stringstream& ss) {
         if (op == "INPUT") {
             program.push_back(new InputInstruction(r1));
@@ -501,7 +679,6 @@ private:
         return false;
     }
 
-    // Handles ROL, ROR, SHL, SHR (hafiy)
     bool parseShiftRotate(const std::string& op, int r1, std::stringstream& ss) {
         if (op != "ROL" && op != "ROR" && op != "SHL" && op != "SHR") return false;
         std::string arg2; ss >> arg2;
@@ -514,7 +691,6 @@ private:
         return true;
     }
 
-    // Handles LOAD (direct + register-indirect) (hafiy)
     bool parseLoad(int r1, std::stringstream& ss) {
         std::string arg2; ss >> arg2;
         if (arg2.size() > 1 && arg2[1] >= '0' && arg2[1] <= '9') {
@@ -526,7 +702,6 @@ private:
         return true;
     }
 
-    // Handles STORE (direct + register-indirect) (hafiy)
     bool parseStore(int r1, const std::string& arg1, std::stringstream& ss) {
         std::string arg2; ss >> arg2;
         stripComma(arg2);
@@ -538,24 +713,26 @@ private:
         return true;
     }
 
-    // Handles PUSH, POP, and RESET <Flag> (hafiy)
     bool parseStackAndFlags(const std::string& op, int r1, const std::string& arg1) {
         if (op == "PUSH") { program.push_back(new PushInstruction(r1)); return true; }
         if (op == "POP") { program.push_back(new PopInstruction(r1)); return true; }
-        if (op == "RESET") { program.push_back(new ResetInstruction(arg1)); return true; }
+        if (op == "RESET") { 
+            // FIXED: Decides if parameter targets status bits or raw register indices
+            if (arg1 == "CF" || arg1 == "OF" || arg1 == "UF" || arg1 == "ZF") {
+                program.push_back(new ResetFlagInstruction(arg1));
+                return true;
+            }
+        }
         return false;
     }
 
 public:
-    // Destructor to safely clean up allocated heap memory 
     ~Runner() {
         for (int i = 0; i < program.size(); i++) {
             delete program[i];
         }
     }
 
-    // Opens and reads external file into a Queue first (one line = one FIFO entry),
-    // then drains the queue in order, decoding each line into an Instruction object.
     void loadFromFile(std::string filename) {
         std::ifstream file(filename);
         if (!file.is_open()) {
@@ -574,11 +751,9 @@ public:
         }
     }
 
-    // Parses one raw text line and delegates to the matching opcode-group parser.
-    // Keeping each group in its own function keeps this dispatcher short.
     void decodeAndBuild(std::string line) {
         std::stringstream ss(line);
-        std::string op, arg1;
+        std::string op, arg1, arg2; 
         ss >> op >> arg1;
         stripComma(arg1);
         int r1 = getRegisterId(arg1);
@@ -588,10 +763,29 @@ public:
         if (op == "LOAD") { parseLoad(r1, ss); return; }
         if (op == "STORE") { parseStore(r1, arg1, ss); return; }
         if (parseStackAndFlags(op, r1, arg1)) return;
-        // Unknown opcode: silently ignored (could be extended to report an error)
+        
+        // Member 2 Opcode Handlers
+        if (op == "ADD") {
+            ss >> arg2;
+            program.push_back(new AddInstruction(r1, getRegisterId(arg2)));
+        } else if (op == "SUB") {
+            ss >> arg2;
+            program.push_back(new SubInstruction(r1, getRegisterId(arg2)));
+        } else if (op == "MUL") {
+            ss >> arg2;
+            program.push_back(new MulInstruction(r1, getRegisterId(arg2)));
+        } else if (op == "DIV") {
+            ss >> arg2;
+            program.push_back(new DivInstruction(r1, getRegisterId(arg2)));
+        } else if (op == "INC") {
+            program.push_back(new IncInstruction(r1));
+        } else if (op == "DEC") {
+            program.push_back(new DecInstruction(r1));
+        } else if (op == "RESET") {
+            program.push_back(new ResetRegisterInstruction(r1));
+        }
     }
 
-    // The core execution loop engine
     void runProgram() {
         while (cpu.getPC() < program.size()) {
             program[cpu.getPC()]->execute(cpu);
@@ -602,11 +796,7 @@ public:
 
 int main() {
     Runner vmRunner;
-
-    //vmRunner.loadAndParseMockFile(); testing without asm file
-
     vmRunner.loadFromFile("program.asm");
-
     vmRunner.runProgram();
     return 0;
 }
