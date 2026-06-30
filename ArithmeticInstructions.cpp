@@ -118,12 +118,11 @@ private:
     int destReg;
 
 public:
-    IncInstruction(int dest, int src) : destReg(dest) {}
+    IncInstruction(int dest) : destReg(dest) {}
 
     void execute(CPU& cpu) override {
 
         signed char val1 = cpu.getRegister(destReg).getValue();
-        signed char val2 = cpu.getRegister(srcReg).getValue();
 
         cpu.getFlags().resetAll();
         
@@ -144,12 +143,11 @@ private:
     int destReg;
 
 public:
-    DecInstruction(int dest, int src) : destReg(dest) {}
+    DecInstruction(int dest) : destReg(dest) {}
 
     void execute(CPU& cpu) override {
 
         signed char val1 = cpu.getRegister(destReg).getValue();
-        signed char val2 = cpu.getRegister(srcReg).getValue();
 
         cpu.getFlags().resetAll();
         
