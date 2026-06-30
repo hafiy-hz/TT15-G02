@@ -84,3 +84,112 @@ public:
         cpu.incrementPC(); 
     }
 };
+
+// MulInstruction or MULL (*)  <3333333,
+class MulInstruction : public Instruction {
+private:
+    int destReg;
+    int srcReg;
+
+public:
+    MulInstruction(int dest, int src) : destReg(dest), srcReg(src) {}
+
+    void execute(CPU& cpu) override {
+
+        signed char val1 = cpu.getRegister(destReg).getValue();
+        signed char val2 = cpu.getRegister(srcReg).getValue();
+
+        cpu.getFlags().resetAll();
+        
+        // similar to the other function except we multiply instead
+        int rawResult = (int)val1 * (int)val2;
+
+        FlagHelper::updateFlags(cpu, rawResult);
+
+        cpu.getRegister(destReg).setValue(static_cast<signed char>(rawResult));
+
+        cpu.incrementPC(); 
+    }
+};
+
+// IncInstruction or increment  (++)  wkwkwkwk
+class IncInstruction : public Instruction {
+private:
+    int destReg;
+    int srcReg;
+
+public:
+    IncInstruction(int dest, int src) : destReg(dest), srcReg(src) {}
+
+    void execute(CPU& cpu) override {
+
+        signed char val1 = cpu.getRegister(destReg).getValue();
+        signed char val2 = cpu.getRegister(srcReg).getValue();
+
+        cpu.getFlags().resetAll();
+        
+        // only need one register for this, not two
+        int rawResult = (int)val1 + 1;
+
+        FlagHelper::updateFlags(cpu, rawResult);
+
+        cpu.getRegister(destReg).setValue(static_cast<signed char>(rawResult));
+
+        cpu.incrementPC(); 
+    }
+};
+
+// DecInstruction or Decrement  (--)  HAHAHAHAHAHA
+class DecInstruction : public Instruction {
+private:
+    int destReg;
+    int srcReg;
+
+public:
+    DecInstruction(int dest, int src) : destReg(dest), srcReg(src) {}
+
+    void execute(CPU& cpu) override {
+
+        signed char val1 = cpu.getRegister(destReg).getValue();
+        signed char val2 = cpu.getRegister(srcReg).getValue();
+
+        cpu.getFlags().resetAll();
+        
+        // only need one register for this, not two
+        int rawResult = (int)val1 - 1;
+
+        FlagHelper::updateFlags(cpu, rawResult);
+
+        cpu.getRegister(destReg).setValue(static_cast<signed char>(rawResult));
+
+        cpu.incrementPC(); 
+    }
+};
+
+// ResetInstruction is reset (\\>.<//)
+class ResetInstruction : public Instruction {
+private:
+    int destReg;
+
+public:
+    // Notice this only takes ONE register (dest), not a source (src)
+    ResetInstruction(int dest) : destReg(dest) {}
+
+    void execute(CPU& cpu) override {
+        // 1. Clear any old flags from previous commands
+        cpu.getFlags().resetAll();
+
+        // 2. The result of a reset is always just 0
+        int rawResult = 0;
+
+        // 3. Send the answer to flag 
+        // (Because the answer is 0, flag helper will automatically turn ON the Zero Flag)
+        FlagHelper::updateFlags(cpu, rawResult);
+
+        // 4. Force the 0 back into the register
+        cpu.getRegister(destReg).setValue(static_cast<signed char>(rawResult));
+
+        // 5. Move to the next line of the text file
+        cpu.incrementPC(); 
+    }
+};
