@@ -440,6 +440,41 @@ public:
     }
 };
 
+// INSERTED: MUL with immediate value (e.g. MUL R3, 4)
+class MulImmediateInstruction : public Instruction {
+private:
+    int destReg, immediate;
+public:
+    MulImmediateInstruction(int dest, int imm) : destReg(dest), immediate(imm) {}
+    void execute(CPU& cpu) override {
+        int rawResult = (int)cpu.getRegister(destReg).getValue() * immediate;
+        cpu.getFlags().resetAll();
+        FlagHelper::updateFlags(cpu, rawResult);
+        cpu.getRegister(destReg).setValue(static_cast<signed char>(rawResult));
+        cpu.incrementPC();
+    }
+};
+
+// INSERTED: DIV with immediate value (e.g. DIV R3, 2)
+class DivImmediateInstruction : public Instruction {
+private:
+    int destReg, immediate;
+public:
+    DivImmediateInstruction(int dest, int imm) : destReg(dest), immediate(imm) {}
+    void execute(CPU& cpu) override {
+        if (immediate == 0) { 
+            std::cout << "Error: Division by zero!" << std::endl; 
+            cpu.incrementPC(); 
+            return; 
+        }
+        int rawResult = (int)cpu.getRegister(destReg).getValue() / immediate;
+        cpu.getFlags().resetAll();
+        FlagHelper::updateFlags(cpu, rawResult);
+        cpu.getRegister(destReg).setValue(static_cast<signed char>(rawResult));
+        cpu.incrementPC();
+    }
+};
+
 
 // ============================================================================
 // MEMBER 3 SHIFT, ROTATE, MEMORY ACCESS, STACK INSTRUCTIONS
@@ -702,12 +737,18 @@ private:
         return true;
     }
 
+    // UPDATED: Replaced original implementation with flexible parsing paths
     bool parseStore(int r1, const std::string& arg1, std::stringstream& ss) {
         std::string arg2; ss >> arg2;
         stripComma(arg2);
         if (!arg1.empty() && arg1[0] == '[') {
+            // STORE [R1], R2 — indirect mode
             program.push_back(new StoreIndirectInstruction(getRegisterId(arg1), getRegisterId(arg2)));
+        } else if (!arg1.empty() && arg1[0] >= '0' && arg1[0] <= '9') {
+            // STORE 20, R3 — address first (PDF sample format)
+            program.push_back(new StoreDirectInstruction(getRegisterId(arg2), parseInt(arg1)));
         } else {
+            // STORE R1, 43 — register first (spec section 3.9)
             program.push_back(new StoreDirectInstruction(r1, parseInt(arg2)));
         }
         return true;
@@ -772,11 +813,21 @@ public:
             ss >> arg2;
             program.push_back(new SubInstruction(r1, getRegisterId(arg2)));
         } else if (op == "MUL") {
-            ss >> arg2;
-            program.push_back(new MulInstruction(r1, getRegisterId(arg2)));
+            // UPDATED: Direct immediate vs registration selection
+            ss >> arg2; stripComma(arg2);
+            if (!arg2.empty() && arg2[0] == 'R') {
+                program.push_back(new MulInstruction(r1, getRegisterId(arg2)));
+            } else {
+                program.push_back(new MulImmediateInstruction(r1, parseInt(arg2)));
+            }
         } else if (op == "DIV") {
-            ss >> arg2;
-            program.push_back(new DivInstruction(r1, getRegisterId(arg2)));
+            // UPDATED: Direct immediate vs registration selection
+            ss >> arg2; stripComma(arg2);
+            if (!arg2.empty() && arg2[0] == 'R') {
+                program.push_back(new DivInstruction(r1, getRegisterId(arg2)));
+            } else {
+                program.push_back(new DivImmediateInstruction(r1, parseInt(arg2)));
+            }
         } else if (op == "INC") {
             program.push_back(new IncInstruction(r1));
         } else if (op == "DEC") {
