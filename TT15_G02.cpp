@@ -5,37 +5,48 @@
 // Virtual Machine and Assembly Language Interpreter
 // Combined Workspace: Adam Syafiq, Adam Harith, Airell Aidan, & Hafiy
 
+// ============================================================================
+// CUSTOM CONTAINER CLASSES
+// ============================================================================
+
 // Written by: Adam Syafiq
+// A custom dynamic array template class acting as a lightweight std::vector alternative.
 template <typename T>
 class MyArray { 
 private:
-    T* arr;
-    int capacity;
-    int current_size;
+    T* arr;             // Pointer to dynamically allocated memory block
+    int capacity;       // Total allocated storage slots available
+    int current_size;   // Total number of elements currently stored
 
+    // Dynamically doubles the internal storage array capacity when bounds are reached
     void resize() {
         capacity *= 2;
         T* temp = new T[capacity];
         for (int i = 0; i < current_size; i++) {
             temp[i] = arr[i];
         }
-        delete[] arr;
-        arr = temp;
+        delete[] arr;   // Clean up older, smaller memory block
+        arr = temp;     // Point to the newly expanded memory segment
     }
 
 public:
+    // Initializes the container with a default small footprint (4 slots)
     MyArray() {
         capacity = 4;
         current_size = 0;
         arr = new T[capacity];
     }
+    
+    // Ensures internal dynamic heap allocations are safely freed upon destruction
     ~MyArray() { delete[] arr; }
 
+    // Appends an element to the end, triggering an automatic resize if full
     void push_back(const T& data) {
         if (current_size == capacity) resize();
         arr[current_size++] = data;
     }
 
+    // Accessors for reading/writing elements via traditional array indexing
     T& operator[](int index) { return arr[index]; }
     int size() const { return current_size; }
 };
@@ -78,25 +89,30 @@ public:
 };
 
 // Written by: Adam Syafiq 
+// A lightweight, fixed-size LIFO (Last-In, First-Out) stack implementation.
 template <typename T>
 class MyStack {
 private:
-    T arr[100];
-    int topIndex;
+    T arr[100];         // Internal static storage array with a hard ceiling of 100 elements
+    int topIndex;       // Array index tracking the current top element
 
 public:
+    // Instantiates an empty stack context (-1 denotes an empty state)
     MyStack() : topIndex(-1) {}
     
+    // Pushes a value onto the stack if space allows
     void push(T val) {
         if (topIndex < 99) arr[++topIndex] = val;
     }
 
+    // Removes and returns the top element; safety-checks for underflow conditions
     T pop() {
         if (topIndex >= 0) return arr[topIndex--];
         std::cout << "CRASH: Stack Underflow!" << std::endl;
         exit(1);
     }
 
+    // Basic stack state queries
     bool isEmpty() const { return topIndex == -1; }
     int size() const { return topIndex + 1; }
 };
@@ -106,20 +122,23 @@ public:
 // ============================================================================
 
 // Written by: Adam Syafiq
+// Base hardware entity model representing a generic 8-bit signed register cell.
 class Register {
 protected:
-    signed char value;
+    signed char value;  // Fits 8-bit signed limits (-128 to 127) explicitly
 public:
     Register() : value(0) {}
-    virtual ~Register() {}
+    virtual ~Register() {} // Virtual destructor ensures safe inheritance cleanup
+    
     signed char getValue() const { return value; }
     void setValue(signed char val) { value = val; }
 };
 
 // Written by: Adam Syafiq
+// Derived specialization providing identification mapping logic for general-purpose registers (R0-R7).
 class GeneralRegister : public Register {
 private:
-    int id;
+    int id;             // Unique identifier corresponding to register number mapping
 public:
     GeneralRegister() : id(0) {}
     void setId(int rId) { id = rId; }
@@ -127,6 +146,7 @@ public:
 };
 
 // Written by: Adam Syafiq
+// Processor Status Flag register modeling logic flag evaluation triggers.
 class FlagRegister {
 private:
     bool cf; // Carry Flag
@@ -135,45 +155,58 @@ private:
     bool zf; // Zero Flag
 public:
     FlagRegister() : cf(false), of(false), uf(false), zf(false) {}
+    
+    // Getters
     bool getCF() const { return cf; }
     bool getOF() const { return of; }
     bool getUF() const { return uf; }
     bool getZF() const { return zf; }
+    
+    // Setters
     void setCF(bool b) { cf = b; }
     void setOF(bool b) { of = b; }
     void setUF(bool b) { uf = b; }
     void setZF(bool b) { zf = b; }
+    
+    // Clears all condition flags simultaneously before running a fresh instruction
     void resetAll() { cf = of = uf = zf = false; }
 };
 
 // Written by: Adam Syafiq
+// Memory component abstraction simulating 64 bytes of direct RAM allocation.
 class Memory {
 private:
-    signed char data[64];
+    signed char data[64]; // Static array acting as linear, 64-byte volatile RAM
 public:
+    // Zero-initializes all memory sectors on system boot
     Memory() {
         for (int i = 0; i < 64; i++) data[i] = 0;
     }
+    
+    // Reads from memory with strict index boundary protection
     signed char read(int address) const {
         if (address >= 0 && address < 64) return data[address];
-        return 0;
+        return 0; // Gracefully handles out-of-bounds reads
     }
+    
+    // Writes to memory with strict index boundary protection
     void write(int address, signed char val) {
         if (address >= 0 && address < 64) data[address] = val;
     }
 };
 
 // Written by: Adam Syafiq & Aiden
+// Core CPU Engine organizing registers, memory space, and program lifecycle sequencing.
 class CPU {
 private:
-    GeneralRegister registers[8];
-    FlagRegister flags;
-    Memory memory;
-    int pc;
-    int si;
-    MyStack<signed char> systemStack;
+    GeneralRegister registers[8];      // Hardware array containing R0 through R7
+    FlagRegister flags;                // Internal CPU status flag tracker
+    Memory memory;                     // 64-byte addressable RAM space
+    int pc;                            // Program Counter tracking active execution index
+    int si;                            // Stack Index mapping layout depth limits
+    MyStack<signed char> systemStack;  // Dedicated runtime stack structure
 
-    
+    // Custom formatting helper ensuring numbers always print in a clean, unified 4-character block
     void printPadded(int val) const {
         if (val < 0) {
             std::cout << "-";
@@ -186,21 +219,29 @@ private:
     }
 
 public:
+    // Bootstraps CPU internals, setting identities for internal General Registers
     CPU() : pc(0), si(0) {
         for (int i = 0; i < 8; i++) registers[i].setId(i);
     }
+    
+    // Hardware component access interfaces
     GeneralRegister& getRegister(int idx) { return registers[idx]; }
     FlagRegister& getFlags() { return flags; }
     Memory& getMemory() { return memory; }
+    
+    // Execution cycle pointer controls
     int getPC() const { return pc; }
     void setPC(int val) { pc = val; }
     void incrementPC() { pc++; }
+    
+    // Stack layout control tracking
     void incrementSI() { si++; }
     void decrementSI() { si--; }
     int getSI() const { return si; }
     MyStack<signed char>& getStack() { return systemStack; }
 
     // FIXED: Moved to CPU class and renamed to dump() 
+    // Generates a snapshot dump of the processor state, flags, and memory grid
     void dump() {
         std::cout << "#Begin#" << std::endl;
         std::cout << "#Registers#";
@@ -233,23 +274,29 @@ public:
 // ============================================================================
 
 // Written by: Adam Syafiq
+// Polymorphic base interface wrapping the implementation behavior of all virtual machine commands.
 class Instruction {
 public:
     virtual ~Instruction() {}
+    // Pure virtual method handling precise machine operations across various instruction subclasses
     virtual void execute(CPU& cpu) = 0;
 };
 
 // Written by: Adam Syafiq
+// Handles user keyboard runtime integer injection (INPUT command).
 class InputInstruction : public Instruction {
 private:
-    int destReg;
+    int destReg; // Target register index to save user input values
 public:
     InputInstruction(int reg) : destReg(reg) {}
+    
     void execute(CPU& cpu) override {
         std::cout << "?" << std::endl;
         int val;
         std::cin >> val;
         cpu.getFlags().resetAll();
+        
+        // Catches inputs exceeding 8-bit boundaries and asserts architectural overflow clamps
         if (val > 127) {
             cpu.getFlags().setOF(true);
             cpu.getRegister(destReg).setValue(127);
@@ -259,6 +306,8 @@ public:
         } else {
             cpu.getRegister(destReg).setValue(static_cast<signed char>(val));
         }
+        
+        // Standard check to trip the Zero Flag if the final assigned value is exactly zero
         if (cpu.getRegister(destReg).getValue() == 0) cpu.getFlags().setZF(true);
         cpu.incrementPC();
     }
@@ -278,13 +327,16 @@ public:
 };
 
 // Written by: Adam Syafiq
+// Loads a direct raw integer value into a designated destination register (e.g., MOV R1, 10).
 class MovImmediateInstruction : public Instruction {
 private:
     int destReg;
     int immediate;
 public:
     MovImmediateInstruction(int reg, int val) : destReg(reg), immediate(val) {}
+    
     void execute(CPU& cpu) override {
+        // Direct cast assignment bypassing complex arithmetic bounds checking
         cpu.getRegister(destReg).setValue(static_cast<signed char>(immediate));
         cpu.getFlags().resetAll();
         if (immediate == 0) cpu.getFlags().setZF(true);
@@ -293,12 +345,14 @@ public:
 };
 
 // Written by: Adam Syafiq
+// Copies content data straight from one register cell into another (e.g., MOV R1, R2).
 class MovRegisterInstruction : public Instruction {
 private:
     int destReg;
     int srcReg;
 public:
     MovRegisterInstruction(int dest, int src) : destReg(dest), srcReg(src) {}
+    
     void execute(CPU& cpu) override {
         signed char val = cpu.getRegister(srcReg).getValue();
         cpu.getRegister(destReg).setValue(val);
@@ -309,15 +363,17 @@ public:
 };
 
 // Written by: Adam Syafiq
+// Loads content indirectly from RAM via a pointer address held in an argument register (e.g., MOV R1, [R2]).
 class MovIndirectInstruction : public Instruction {
 private:
     int destReg;
-    int srcRegAddr;
+    int srcRegAddr; // Register containing the target RAM address offset
 public:
     MovIndirectInstruction(int dest, int src) : destReg(dest), srcRegAddr(src) {}
+    
     void execute(CPU& cpu) override {
         signed char addr = cpu.getRegister(srcRegAddr).getValue();
-        signed char val = cpu.getMemory().read(addr);
+        signed char val = cpu.getMemory().read(addr); // Direct lookup inside RAM bounds
         cpu.getRegister(destReg).setValue(val);
         cpu.getFlags().resetAll();
         if (val == 0) cpu.getFlags().setZF(true);
@@ -816,40 +872,51 @@ public:
 // ============================================================================
 // Written by: Adam Syafiq & Aiden
 
-// Custom string parsing tool converting raw text parameters safely into base integer values
+// Custom string parsing tool converting raw text parameters safely into base integer values.
+// Written by: Adam Syafiq
 int parseInt(std::string s) {
     int val = 0;
     int sign = 1;
     int start = 0;
-    if (!s.empty() && s[0] == '-') { sign = -1; start = 1; }
+    
+    // Manually flags string signs without leaning on std::stoi conversions
+    if (!s.empty() && s[0] == '-') { 
+        sign = -1; 
+        start = 1; 
+    }
     for (int i = start; i < (int)s.size(); i++) {
-        if (s[i] >= '0' && s[i] <= '9') val = val * 10 + (s[i] - '0');
+        if (s[i] >= '0' && s[i] <= '9') {
+            val = val * 10 + (s[i] - '0');
+        }
     }
     return val * sign;
 }
 
-// System controller coordinator handling orchestration loops and initialization routines
+// System controller coordinator handling compilation structures, parsing, and step loops.
 class Runner {
 private:
-    MyArray<Instruction*> program; // Dynamic pointer compilation vector tracking parsed executable instruction blocks
-    CPU cpu;                       // Concrete structural target instantiation mapping processor logic blocks
+    MyArray<Instruction*> program; // Custom vector accumulating polymorphic compiled instruction objects
+    CPU cpu;                       // Instantiated hardware core container object
 
-    // Pulls structural ID index definitions cleanly out from tracking literal names (ex: "R3" returns integer 3)
+    // Extracts structural index identifiers out of string literals (e.g., "R5" maps cleanly to int 5)
+    // Written by: Adam Syafiq
     int getRegisterId(std::string regStr) {
         for (char c : regStr) {
             if (c >= '0' && c <= '7') {
                 return c - '0';
             }
         }
-        return 0; 
+        return 0; // Default fallback index parameter
     }
 
-    // Drops syntactical instruction commas from text configurations
+    // Strips out assembly syntactical commas from argument text groupings
+    // Written by: Adam Syafiq
     void stripComma(std::string& s) {
         if (!s.empty() && s.back() == ',') s.pop_back();
     }
 
-    // Custom string loop slice parsing tool replacing forbidden std::stringstream structures safely
+    // Slices text instructions using white space breaks, replacing forbidden std::stringstream structures
+    // Written by: Adam Syafiq
     int tokenize(const std::string& line, std::string tokens[4]) {
         int tokenCount = 0;
         std::string currentToken = "";
@@ -868,18 +935,20 @@ private:
         if (!currentToken.empty() && tokenCount < 4) {
             tokens[tokenCount++] = currentToken;
         }
-        return tokenCount; // Return total structural tokens captured
+        return tokenCount; // Total operational parameter fragments extracted
     }
 
 public:
-    // Destructor cleanly recycling polymorphic commands from heap loops memory spaces
+    // Destructor cycles through the custom container array, cleaning up polymorphic heap references
+    // Written by: Adam Syafiq
     ~Runner() {
         for (int i = 0; i < program.size(); i++) {
             delete program[i];
         }
     }
 
-    // File loading system streaming configuration information directly from text maps
+    // Handles text assembly file initialization streams sequentially using custom staging queues
+    // Written by: Adam Syafiq
     void loadFromFile(std::string filename) {
         std::ifstream file(filename);
         if (!file.is_open()) {
@@ -899,18 +968,19 @@ public:
         }
     }
 
-    // Decodes assembly instructions and instantiates corresponding instruction objects
+    // Core Instruction Decoder: Maps text tokens to new concrete objects on the heap
+    // Written by: Adam Syafiq & Aiden
     void decodeAndBuild(std::string line) {
         std::string tokens[4] = {"", "", "", ""};
         int count = tokenize(line, tokens);
-        if (count == 0) return; // Skip evaluation routines if parsing empty lines
+        if (count == 0) return; // Ignore blank lines entirely
 
-        std::string op = tokens[0];     // Captured opcode string (ex: "MOV", "ADD")
-        std::string arg1 = tokens[1];   // Target parameter element string
+        std::string op = tokens[0];     // Extract operation mnemonic name (e.g., "MOV", "ADD")
+        std::string arg1 = tokens[1];   // Extract first operational argument
         stripComma(arg1);
         int r1 = getRegisterId(arg1);   // Target resolved reference ID assignment mappings
 
-        // I/O Command Branch Handlers
+        // Input/Output Code Branch Builders
         if (op == "INPUT") {
             program.push_back(new InputInstruction(r1));
             return;
@@ -920,7 +990,7 @@ public:
             return;
         }
 
-        // MOV Variable Parser Branch Configuration
+        // Assignment Data Move Parser Branch Setup
         if (op == "MOV") {
             std::string arg2 = tokens[2];
             if (arg2[0] == 'R') {
@@ -1013,7 +1083,8 @@ public:
         else if (op == "RESET") program.push_back(new ResetRegisterInstruction(r1));
     }
 
-    // Main execution driver loop processing commands sequence paths sequentially
+    // Sequences operations continuously based on the state of the Program Counter (PC)
+    // Written by: Adam Syafiq
     void runProgram() {
         while (cpu.getPC() < program.size()) {
             program[cpu.getPC()]->execute(cpu); // Fetch and execute instruction dynamically
