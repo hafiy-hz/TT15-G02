@@ -885,7 +885,7 @@ public:
         }
         cpu.dump(); // Prints register, flags, and memory dumps after execution completes
     }
-}
+};
 
 // ============================================================================
 // MAIN SYSTEM ENTRY POINT
