@@ -2,7 +2,8 @@
 #include <string>
 #include <fstream>
 
-// Combined Workspace: Adam Syafiq, Adam Harith, Hafiy, & Aiden
+// Virtual Machine and Assembly Language Interpreter
+// Combined Workspace: Adam Syafiq, Adam Harith, Airell Aidan, & Hafiy
 
 // Written by: Adam Syafiq
 template <typename T>
