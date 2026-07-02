@@ -330,16 +330,24 @@ public:
 // ============================================================================
 // Written by: Adam Harith
 
+// FLAGHELPER; using a static helper class so that we don't waste lines of code in the main instructions.
 class FlagHelper {
 public:
     static void updateFlags(CPU& cpu, int rawResult) {
+        // Check for Zero (ZF)
         if (rawResult == 0) {
             cpu.getFlags().setZF(true);
         }
+
+        // Check for Overflow (OF) and Carry (CF)
+        // An 8-bit signed integer cannot go above 127.
         if (rawResult > 127) {
             cpu.getFlags().setOF(true);
             cpu.getFlags().setCF(true); 
         }
+
+        // Check for Underflow (UF) 
+        // An 8-bit signed integer cannot drop below -128.
         if (rawResult < -128) {
             cpu.getFlags().setUF(true);
             cpu.getFlags().setCF(true); 
@@ -347,151 +355,264 @@ public:
     }
 };
 
+// AddInstruction or ADD (+)  
 class AddInstruction : public Instruction {
 private:
     int destReg;
     int srcReg;
+
 public:
+    // The constructor saves which registers are using (example: ADD R1, R2)
     AddInstruction(int dest, int src) : destReg(dest), srcReg(src) {}
+
     void execute(CPU& cpu) override {
+        // 1. Get the current numbers stored in the two registers
         signed char val1 = cpu.getRegister(destReg).getValue();
         signed char val2 = cpu.getRegister(srcReg).getValue();
+
+        // 2. Clear any old flags from previous commands
         cpu.getFlags().resetAll();
+
+        // 3. Do the math using a standard 'int' so we can catch overflows
         int rawResult = (int)val1 + (int)val2;
+
+        // 4. Send the answer to helper to set OF, UF, CF, or ZF
         FlagHelper::updateFlags(cpu, rawResult);
+
+        // 5. Force the answer back into an 8-bit size and save it
         cpu.getRegister(destReg).setValue(static_cast<signed char>(rawResult));
+
+        // 6. Tell the CPU to move to the next line of the text file
         cpu.incrementPC(); 
     }
 };
 
+// SubInstruction or SUB (-)  
 class SubInstruction : public Instruction {
 private:
     int destReg;
     int srcReg;
+
 public:
     SubInstruction(int dest, int src) : destReg(dest), srcReg(src) {}
+
     void execute(CPU& cpu) override {
+
         signed char val1 = cpu.getRegister(destReg).getValue();
         signed char val2 = cpu.getRegister(srcReg).getValue();
+
         cpu.getFlags().resetAll();
+        
+        // similar to ADD function except we sutract instead
         int rawResult = (int)val1 - (int)val2;
+
         FlagHelper::updateFlags(cpu, rawResult);
+
         cpu.getRegister(destReg).setValue(static_cast<signed char>(rawResult));
+
         cpu.incrementPC(); 
     }
 };
 
+// MulInstruction or MULL (*)  
 class MulInstruction : public Instruction {
 private:
     int destReg;
     int srcReg;
+
 public:
     MulInstruction(int dest, int src) : destReg(dest), srcReg(src) {}
+
     void execute(CPU& cpu) override {
+
         signed char val1 = cpu.getRegister(destReg).getValue();
         signed char val2 = cpu.getRegister(srcReg).getValue();
+
         cpu.getFlags().resetAll();
+        
+        // similar to the other function except we multiply instead
         int rawResult = (int)val1 * (int)val2;
+
         FlagHelper::updateFlags(cpu, rawResult);
+
         cpu.getRegister(destReg).setValue(static_cast<signed char>(rawResult));
+
         cpu.incrementPC(); 
     }
 };
 
+// IncInstruction or increment  (++)  
 class IncInstruction : public Instruction {
 private:
     int destReg;
+
 public:
-    IncInstruction(int dest) : destReg(dest) {}
+    IncInstruction(int dest) : destReg(dest) {} // only need one register for this, not two
+
     void execute(CPU& cpu) override {
+
         signed char val1 = cpu.getRegister(destReg).getValue();
+
         cpu.getFlags().resetAll();
+        
+        // only need one register for this, not two
         int rawResult = (int)val1 + 1;
+
         FlagHelper::updateFlags(cpu, rawResult);
+
         cpu.getRegister(destReg).setValue(static_cast<signed char>(rawResult));
+
         cpu.incrementPC(); 
     }
 };
 
+// DecInstruction or Decrement  (--)  
 class DecInstruction : public Instruction {
 private:
     int destReg;
+
 public:
     DecInstruction(int dest) : destReg(dest) {}
+
     void execute(CPU& cpu) override {
+
         signed char val1 = cpu.getRegister(destReg).getValue();
+
         cpu.getFlags().resetAll();
+
+        // also only need one register for this, not two
         int rawResult = (int)val1 - 1;
+
         FlagHelper::updateFlags(cpu, rawResult);
+
         cpu.getRegister(destReg).setValue(static_cast<signed char>(rawResult));
+
         cpu.incrementPC(); 
     }
 };
 
+// ResetInstruction or reset 
 class ResetRegisterInstruction : public Instruction {
 private:
     int destReg;
+
 public:
     ResetRegisterInstruction(int dest) : destReg(dest) {}
+    
     void execute(CPU& cpu) override {
+        // Reset all CPU status flags before performing the operation
         cpu.getFlags().resetAll();
+
+        // Pass 0 to the helper
+        // Because the answer is 0, flag helper will automatically turn ON the Zero Flag
         FlagHelper::updateFlags(cpu, 0);
+
+        // Directly set the value of the target register to 0
         cpu.getRegister(destReg).setValue(0);
+        
+        // Advance the Program Counter to the next instruction
         cpu.incrementPC(); 
     }
 };
 
+// DivInstruction or DIV (/)
 class DivInstruction : public Instruction {
 private:
-    int destReg;
-    int srcReg;
+    int destReg; // Register where the dividend is stored and the result will be saved
+    int srcReg; // Register containing the divisor
+
 public:
-    DivInstruction(int dest, int src) : destReg(dest), srcReg(src) {}
+    // Constructor initializes both the dividend and divisor register indices
+    DivInstruction(int dest, int src) : destReg(dest), srcReg(src) {
+
+    }
     void execute(CPU& cpu) override {
+        // Retrieve the current value from the destination register (dividend)
         signed char val1 = cpu.getRegister(destReg).getValue();
+        
+        // Retrieve the current value from the source register
         signed char val2 = cpu.getRegister(srcReg).getValue();
+
+        // Clear existing status flags before the calculation
         cpu.getFlags().resetAll();
+
+        // check to handle division by zero errors
         if (val2 == 0) {
-            std::cout << "Error: Division by zero!" << std::endl;
-            cpu.incrementPC();
-            return; 
+            s   td::cout << "Error: Division by zero!" << std::endl; // Report error to console
+            cpu.incrementPC(); // Skip to next instruction to avoid infinite loops
+            return; //exit function early
         }
+
+        // Calculate division using 'int' to safely handle intermediate values
         int rawResult = (int)val1 / (int)val2;
+
+        // Update status flags based on the resulting value
         FlagHelper::updateFlags(cpu, rawResult);
+
+        // Store the result back into the destination register after casting to signed char
         cpu.getRegister(destReg).setValue(static_cast<signed char>(rawResult));
+
+        // Advance the Program Counter to the next instruction
         cpu.incrementPC();
     }
 };
 
+// MulImmediateInstruction or Multiplies a register value by a direct integer constant (*)
 class MulImmediateInstruction : public Instruction {
 private:
-    int destReg, immediate;
+    int destReg, immediate; // Stores the register index and the raw number to multiply by
+
 public:
+    // Constructor initializes the target register and the immediate constant value
     MulImmediateInstruction(int dest, int imm) : destReg(dest), immediate(imm) {}
+
     void execute(CPU& cpu) override {
+        // Calculate result by multiplying register value by the immediate constant
         int rawResult = (int)cpu.getRegister(destReg).getValue() * immediate;
+
+        // Clear all flags before processing the new operation
         cpu.getFlags().resetAll();
+
+        // Update status flags (OF, UF, CF, ZF) based on the calculated result
         FlagHelper::updateFlags(cpu, rawResult);
+
+        // Store result back in the register after casting it back to 8-bit size
         cpu.getRegister(destReg).setValue(static_cast<signed char>(rawResult));
+        
+        // Advance the Program Counter to the next instruction
         cpu.incrementPC();
     }
 };
 
+// DivImmediateInstruction or Divides a register value by a direct integer constant (*)
 class DivImmediateInstruction : public Instruction {
 private:
-    int destReg, immediate;
+    int destReg, immediate; // Stores the register index and the divisor constant
+
 public:
+    // Constructor initializes the target register and the immediate divisor
     DivImmediateInstruction(int dest, int imm) : destReg(dest), immediate(imm) {}
+
     void execute(CPU& cpu) override {
+        // Similar to DivInstruction, Safety check to prevent crashing on division by zero
         if (immediate == 0) { 
-            std::cout << "Error: Division by zero!" << std::endl; 
-            cpu.incrementPC(); 
+            std::cout << "Error: Division by zero!" << std::endl;  // Report the error
+            cpu.incrementPC(); // Skip instruction to continue execution
             return; 
         }
+        // Calculate result by dividing register value by the immediate constant
         int rawResult = (int)cpu.getRegister(destReg).getValue() / immediate;
+
+        // Clear all flags before updating status
         cpu.getFlags().resetAll();
+
+        // Update status flags based on the division result
         FlagHelper::updateFlags(cpu, rawResult);
+
+        // Store result back in the register after casting to 8-bit size
         cpu.getRegister(destReg).setValue(static_cast<signed char>(rawResult));
+        
+        // Advance the Program Counter to the next instruction
         cpu.incrementPC();
     }
 };
@@ -857,22 +978,36 @@ public:
             }
         }
         
-        // Member 2 Arithmetic Instructions Processing Branch
+        // ADAM HARITH; Arithmetic Instructions Processing Branch 
+
+        // Group all math operations that require TWO arguments (such as ADD R1, R2)
         if (op == "ADD" || op == "SUB" || op == "MUL" || op == "DIV") {
+
+            // Extract the second argument from the parsed text (for example grabs "R2,")
             std::string arg2 = tokens[2];
+            
+            // Clean up the string by removing trailing commas so it doesn't break the parser
             stripComma(arg2);
+
+            // Map the text command to the correct Instruction object
             if (op == "ADD") program.push_back(new AddInstruction(r1, getRegisterId(arg2)));
             else if (op == "SUB") program.push_back(new SubInstruction(r1, getRegisterId(arg2)));
+
+            // MUL and DIV have advanced logic: they check if the second argument is a Register or a raw number
             else if (op == "MUL") {
+                // If arg2 starts with 'R' (like "R3"), use the standard Register instruction
                 if (!arg2.empty() && arg2[0] == 'R') program.push_back(new MulInstruction(r1, getRegisterId(arg2)));
+                // Otherwise, treat it as a raw integer (like "5") and use the Immediate instruction
                 else program.push_back(new MulImmediateInstruction(r1, parseInt(arg2)));
             } else if (op == "DIV") {
+                // Same as MUL, it checks for 'R' to decide between Register or Immediate division
                 if (!arg2.empty() && arg2[0] == 'R') program.push_back(new DivInstruction(r1, getRegisterId(arg2)));
                 else program.push_back(new DivImmediateInstruction(r1, parseInt(arg2)));
             }
             return;
         } 
         
+        // Handle operations that only require ONE argument (example is INC R1)
         if (op == "INC") program.push_back(new IncInstruction(r1));
         else if (op == "DEC") program.push_back(new DecInstruction(r1));
         else if (op == "RESET") program.push_back(new ResetRegisterInstruction(r1));
