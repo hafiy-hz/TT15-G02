@@ -1,13 +1,12 @@
 #include <iostream>
 #include <string>
 #include <fstream>
-#include <sstream>
 
-// Virtual Machine and Assembly Language Interpreter
-// Combined Workspace: Adam Syafiq, Adam Harith, & Hafiy 
+// Combined Workspace: Adam Syafiq, Adam Harith, Hafiy, & Aiden
 
+// Written by: Adam Syafiq
 template <typename T>
-class MyVector {
+class MyArray { 
 private:
     T* arr;
     int capacity;
@@ -24,12 +23,12 @@ private:
     }
 
 public:
-    MyVector() {
+    MyArray() {
         capacity = 4;
         current_size = 0;
         arr = new T[capacity];
     }
-    ~MyVector() { delete[] arr; }
+    ~MyArray() { delete[] arr; }
 
     void push_back(const T& data) {
         if (current_size == capacity) resize();
@@ -40,38 +39,44 @@ public:
     int size() const { return current_size; }
 };
 
-// FIXED: Added Custom Queue Class directly here for single-file assignment rules
+// Written by: Hafiy 
+// Custom Queue class template to replace the forbidden 'std::queue'
 template <typename T>
 class MyQueue {
 private:
-    T arr[200];
-    int frontIndex;
-    int rearIndex;
-    int count;
+    T arr[200];        // Fixed-size array mimicking a circular buffer
+    int frontIndex;    // Tracks the index of the front element
+    int rearIndex;     // Tracks where the next incoming element lands
+    int count;         // Current total element count inside the queue
 public:
+    // Initializes an empty queue structure
     MyQueue() : frontIndex(0), rearIndex(0), count(0) {}
     
+    // Enqueues an item at the back using circular tracking logic
     void enqueue(T val) {
         if (count < 200) {
             arr[rearIndex] = val;
-            rearIndex = (rearIndex + 1) % 200;
+            rearIndex = (rearIndex + 1) % 200; // Loops back to index 0 if it hits 200
             count++;
         }
     }
     
+    // Dequeues and returns the front item, terminates if empty
     T dequeue() {
         if (count > 0) {
             T val = arr[frontIndex];
-            frontIndex = (frontIndex + 1) % 200;
+            frontIndex = (frontIndex + 1) % 200; // Moves front pointer circularly
             count--;
             return val;
         }
-        exit(1);
+        exit(1); // Terminates the program cleanly if unexpected empty states happen
     }
     
+    // Checks if the container has elements left to pull
     bool isEmpty() const { return count == 0; }
 };
 
+// Written by: Adam Syafiq 
 template <typename T>
 class MyStack {
 private:
@@ -95,8 +100,11 @@ public:
     int size() const { return topIndex + 1; }
 };
 
-// Core Classes - Adam Syafiq
+// ============================================================================
+// CORE ARCHITECTURE CLASSES
+// ============================================================================
 
+// Written by: Adam Syafiq
 class Register {
 protected:
     signed char value;
@@ -107,6 +115,7 @@ public:
     void setValue(signed char val) { value = val; }
 };
 
+// Written by: Adam Syafiq
 class GeneralRegister : public Register {
 private:
     int id;
@@ -116,6 +125,7 @@ public:
     int getId() const { return id; }
 };
 
+// Written by: Adam Syafiq
 class FlagRegister {
 private:
     bool cf; // Carry Flag
@@ -135,6 +145,7 @@ public:
     void resetAll() { cf = of = uf = zf = false; }
 };
 
+// Written by: Adam Syafiq
 class Memory {
 private:
     signed char data[64];
@@ -151,6 +162,7 @@ public:
     }
 };
 
+// Written by: Adam Syafiq & Aiden
 class CPU {
 private:
     GeneralRegister registers[8];
@@ -159,30 +171,9 @@ private:
     int pc;
     int si;
     MyStack<signed char> systemStack;
-public:
-    CPU() : pc(0), si(0) {
-        for (int i = 0; i < 8; i++) registers[i].setId(i);
-    }
-    GeneralRegister& getRegister(int idx) { return registers[idx]; }
-    FlagRegister& getFlags() { return flags; }
-    Memory& getMemory() { return memory; }
-    int getPC() const { return pc; }
-    void setPC(int val) { pc = val; }
-    void incrementPC() { pc++; }
+
     
-    // FIXED: Added missing stack index methods
-    void incrementSI() { si++; }
-    void decrementSI() { si--; }
-    int getSI() const { return si; }
-
-    MyStack<signed char>& getStack() { return systemStack; }
-};
-
-// Formatting and Output - Adam Syafiq
-
-class OutputFormatter {
-public:
-    static void printPadded(int val) {
+    void printPadded(int val) const {
         if (val < 0) {
             std::cout << "-";
             val = -val;
@@ -193,44 +184,61 @@ public:
         std::cout << val;
     }
 
-    static void printState(CPU& cpu) {
+public:
+    CPU() : pc(0), si(0) {
+        for (int i = 0; i < 8; i++) registers[i].setId(i);
+    }
+    GeneralRegister& getRegister(int idx) { return registers[idx]; }
+    FlagRegister& getFlags() { return flags; }
+    Memory& getMemory() { return memory; }
+    int getPC() const { return pc; }
+    void setPC(int val) { pc = val; }
+    void incrementPC() { pc++; }
+    void incrementSI() { si++; }
+    void decrementSI() { si--; }
+    int getSI() const { return si; }
+    MyStack<signed char>& getStack() { return systemStack; }
+
+    // FIXED: Moved to CPU class and renamed to dump() 
+    void dump() {
         std::cout << "#Begin#" << std::endl;
         std::cout << "#Registers#";
         for (int i = 0; i < 8; i++) {
-            printPadded(cpu.getRegister(i).getValue());
+            printPadded(registers[i].getValue());
             std::cout << "#";
         }
         std::cout << std::endl;
-        std::cout << "#Flags#OF#" << cpu.getFlags().getOF() << "#UF#" << cpu.getFlags().getUF()
-                  << "#CF#" << cpu.getFlags().getCF() << "#ZF#" << cpu.getFlags().getZF() << "#" << std::endl;
+        std::cout << "#Flags#OF#" << flags.getOF() << "#UF#" << flags.getUF()
+                  << "#CF#" << flags.getCF() << "#ZF#" << flags.getZF() << "#" << std::endl;
         std::cout << "#PC#";
-        printPadded(cpu.getPC());
+        printPadded(pc);
         std::cout << "#" << std::endl;
-        printMemoryDump(cpu);
-        std::cout << "#End#" << std::endl;
-    }
-
-    static void printMemoryDump(CPU& cpu) {
+        
         std::cout << "#Memory#" << std::endl;
         for (int row = 0; row < 8; row++) {
             std::cout << "#";
             for (int col = 0; col < 8; col++) {
-                printPadded(cpu.getMemory().read(row * 8 + col));
+                printPadded(memory.read(row * 8 + col));
                 std::cout << "#";
             }
             std::cout << std::endl;
         }
+        std::cout << "#End#" << std::endl;
     }
 };
 
-// Polymorphic Instructions - Adam Syafiq
+// ============================================================================
+// INSTRUCTION BASE & POLYMORPHIC SUBCLASSES
+// ============================================================================
 
+// Written by: Adam Syafiq
 class Instruction {
 public:
     virtual ~Instruction() {}
     virtual void execute(CPU& cpu) = 0;
 };
 
+// Written by: Adam Syafiq
 class InputInstruction : public Instruction {
 private:
     int destReg;
@@ -255,6 +263,20 @@ public:
     }
 };
 
+// FIXED: Added missing DISPLAY instruction required by the specs
+// Written by: Aiden
+class DisplayInstruction : public Instruction {
+private:
+    int srcReg;
+public:
+    DisplayInstruction(int reg) : srcReg(reg) {}
+    void execute(CPU& cpu) override {
+        std::cout << static_cast<int>(cpu.getRegister(srcReg).getValue()) << std::endl;
+        cpu.incrementPC();
+    }
+};
+
+// Written by: Adam Syafiq
 class MovImmediateInstruction : public Instruction {
 private:
     int destReg;
@@ -269,6 +291,7 @@ public:
     }
 };
 
+// Written by: Adam Syafiq
 class MovRegisterInstruction : public Instruction {
 private:
     int destReg;
@@ -284,6 +307,7 @@ public:
     }
 };
 
+// Written by: Adam Syafiq
 class MovIndirectInstruction : public Instruction {
 private:
     int destReg;
@@ -300,9 +324,8 @@ public:
     }
 };
 
-
 // ============================================================================
-// MEMBER 2 ARITHMETIC INSTRUCTIONS
+// ARITHMETIC INSTRUCTIONS & FLAGS
 // ============================================================================
 // Written by: Adam Harith
 
@@ -404,7 +427,6 @@ public:
     }
 };
 
-// FIXED: Renamed class to differentiate Register clearing vs Flag resetting
 class ResetRegisterInstruction : public Instruction {
 private:
     int destReg;
@@ -440,7 +462,6 @@ public:
     }
 };
 
-// INSERTED: MUL with immediate value (e.g. MUL R3, 4)
 class MulImmediateInstruction : public Instruction {
 private:
     int destReg, immediate;
@@ -455,7 +476,6 @@ public:
     }
 };
 
-// INSERTED: DIV with immediate value (e.g. DIV R3, 2)
 class DivImmediateInstruction : public Instruction {
 private:
     int destReg, immediate;
@@ -475,23 +495,25 @@ public:
     }
 };
 
+// ============================================================================
+// BIT SHIFTS, ROTATES, MEMORY ACCESS, STACK INSTRUCTIONS
+// ============================================================================
+// Written by: Hafiy
 
-// ============================================================================
-// MEMBER 3 SHIFT, ROTATE, MEMORY ACCESS, STACK INSTRUCTIONS
-// ============================================================================
-// Written by: Member 3 (Hafiy)
- 
+// Utility converting a decimal byte into an explicit binary array tracking mapping bits
 void toBinary(signed char value, int bits[8]) {
     unsigned char uval = (unsigned char)value;
     for (int i = 0; i < 8; i++) bits[7 - i] = (uval >> i) & 1;
 }
  
+// Utility converting a mapped binary tracking array back down to a decimal value
 signed char toDecimal(int bits[8]) {
     unsigned char result = 0;
     for (int i = 0; i < 8; i++) result = (unsigned char)((result << 1) | bits[i]);
     return (signed char)result;
 }
  
+// Rotates bits inside targeted register directly towards the left side
 class RotateLeftInstruction : public Instruction {
 private:
     int destReg, count;
@@ -504,14 +526,13 @@ public:
         for (int i = 0; i < 8; i++) result[i] = bits[(i + c) % 8];
         signed char resVal = toDecimal(result);
         cpu.getRegister(destReg).setValue(resVal);
-        
-        // FIXED: Added missing assignment flag status checks
         cpu.getFlags().resetAll();
         if (resVal == 0) cpu.getFlags().setZF(true);
         cpu.incrementPC();
     }
 };
  
+// Rotates bits inside targeted register directly towards the right side
 class RotateRightInstruction : public Instruction {
 private:
     int destReg, count;
@@ -524,13 +545,13 @@ public:
         for (int i = 0; i < 8; i++) result[i] = bits[(i - c + 8) % 8];
         signed char resVal = toDecimal(result);
         cpu.getRegister(destReg).setValue(resVal);
-        
         cpu.getFlags().resetAll();
         if (resVal == 0) cpu.getFlags().setZF(true);
         cpu.incrementPC();
     }
 };
  
+// Shifts bits leftward, padding rightmost elements with zeros
 class ShiftLeftInstruction : public Instruction {
 private:
     int destReg, count;
@@ -545,13 +566,13 @@ public:
             resVal = toDecimal(result);
         }
         cpu.getRegister(destReg).setValue(resVal);
-        
         cpu.getFlags().resetAll();
         if (resVal == 0) cpu.getFlags().setZF(true);
         cpu.incrementPC();
     }
 };
  
+// Shifts bits rightward, padding leftmost elements with zeros
 class ShiftRightInstruction : public Instruction {
 private:
     int destReg, count;
@@ -566,13 +587,13 @@ public:
             resVal = toDecimal(result);
         }
         cpu.getRegister(destReg).setValue(resVal);
-        
         cpu.getFlags().resetAll();
         if (resVal == 0) cpu.getFlags().setZF(true);
         cpu.incrementPC();
     }
 };
  
+// Loads specific data straight from a explicit memory location address index
 class LoadDirectInstruction : public Instruction {
 private:
     int destReg, address;
@@ -585,6 +606,7 @@ public:
     }
 };
  
+// Loads memory data indirectly based on address stored inside a register
 class LoadIndirectInstruction : public Instruction {
 private:
     int destReg, srcReg;
@@ -598,6 +620,7 @@ public:
     }
 };
  
+// Stores specific values from a register directly into a concrete memory cell
 class StoreDirectInstruction : public Instruction {
 private:
     int srcReg, address;
@@ -610,6 +633,7 @@ public:
     }
 };
  
+// Stores specific values from a register indirectly into a memory cell mapped by a register address
 class StoreIndirectInstruction : public Instruction {
 private:
     int destReg, srcReg;
@@ -623,6 +647,7 @@ public:
     }
 };
  
+// Pushes value inside specified target register directly up onto stack allocation
 class PushInstruction : public Instruction {
 private:
     int srcReg;
@@ -630,11 +655,12 @@ public:
     PushInstruction(int reg) : srcReg(reg) {}
     void execute(CPU& cpu) override {
         cpu.getStack().push(cpu.getRegister(srcReg).getValue());
-        cpu.incrementSI();
+        cpu.incrementSI(); // Expand stack index boundaries
         cpu.incrementPC();
     }
 };
  
+// Pops top value off stack architecture allocation straight back down into a register variable
 class PopInstruction : public Instruction {
 private:
     int destReg;
@@ -642,13 +668,13 @@ public:
     PopInstruction(int reg) : destReg(reg) {}
     void execute(CPU& cpu) override {
         signed char val = cpu.getStack().pop();
-        cpu.decrementSI();
+        cpu.decrementSI(); // Shrink stack index parameters
         cpu.getRegister(destReg).setValue(val);
         cpu.incrementPC();
     }
 };
 
-// FIXED: Named explicitly as ResetFlagInstruction to avoid constructor type clashing
+// Targets single specific named hardware flag configurations and strips assertions away back to false
 class ResetFlagInstruction : public Instruction {
 private:
     std::string flagName;
@@ -662,7 +688,13 @@ public:
         cpu.incrementPC();
     }
 };
- 
+
+// ============================================================================
+// FLEXIBLE LINE PARSER & INTEGRATED ASM RUNNER
+// ============================================================================
+// Written by: Adam Syafiq & Aiden
+
+// Custom string parsing tool converting raw text parameters safely into base integer values
 int parseInt(std::string s) {
     int val = 0;
     int sign = 1;
@@ -674,12 +706,13 @@ int parseInt(std::string s) {
     return val * sign;
 }
 
-// Assembly Runner - Adam Syafiq
+// System controller coordinator handling orchestration loops and initialization routines
 class Runner {
 private:
-    MyVector<Instruction*> program; 
-    CPU cpu;                        
+    MyArray<Instruction*> program; // Dynamic pointer compilation vector tracking parsed executable instruction blocks
+    CPU cpu;                       // Concrete structural target instantiation mapping processor logic blocks
 
+    // Pulls structural ID index definitions cleanly out from tracking literal names (ex: "R3" returns integer 3)
     int getRegisterId(std::string regStr) {
         for (char c : regStr) {
             if (c >= '0' && c <= '7') {
@@ -689,162 +722,174 @@ private:
         return 0; 
     }
 
+    // Drops syntactical instruction commas from text configurations
     void stripComma(std::string& s) {
         if (!s.empty() && s.back() == ',') s.pop_back();
     }
 
-    bool parseMovInput(const std::string& op, int r1, std::stringstream& ss) {
-        if (op == "INPUT") {
-            program.push_back(new InputInstruction(r1));
-            return true;
-        }
-        if (op == "MOV") {
-            std::string arg2; ss >> arg2;
-            if (arg2[0] == 'R') {
-                program.push_back(new MovRegisterInstruction(r1, getRegisterId(arg2)));
-            } else if (arg2[0] == '[') {
-                program.push_back(new MovIndirectInstruction(r1, getRegisterId(arg2)));
+    // Custom string loop slice parsing tool replacing forbidden std::stringstream structures safely
+    int tokenize(const std::string& line, std::string tokens[4]) {
+        int tokenCount = 0;
+        std::string currentToken = "";
+        for (size_t i = 0; i < line.length(); i++) {
+            char c = line[i];
+            // Split strings on spaces, tabs, or carriage returns
+            if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
+                if (!currentToken.empty()) {
+                    if (tokenCount < 4) tokens[tokenCount++] = currentToken;
+                    currentToken = "";
+                }
             } else {
-                int val = 0, sign = (arg2[0] == '-') ? -1 : 1;
-                for (char c : arg2) if (c >= '0' && c <= '9') val = val * 10 + (c - '0');
-                program.push_back(new MovImmediateInstruction(r1, val * sign));
-            }
-            return true;
-        }
-        return false;
-    }
-
-    bool parseShiftRotate(const std::string& op, int r1, std::stringstream& ss) {
-        if (op != "ROL" && op != "ROR" && op != "SHL" && op != "SHR") return false;
-        std::string arg2; ss >> arg2;
-        stripComma(arg2);
-        int count = parseInt(arg2);
-        if (op == "ROL") program.push_back(new RotateLeftInstruction(r1, count));
-        else if (op == "ROR") program.push_back(new RotateRightInstruction(r1, count));
-        else if (op == "SHL") program.push_back(new ShiftLeftInstruction(r1, count));
-        else program.push_back(new ShiftRightInstruction(r1, count));
-        return true;
-    }
-
-    bool parseLoad(int r1, std::stringstream& ss) {
-        std::string arg2; ss >> arg2;
-        if (arg2.size() > 1 && arg2[1] >= '0' && arg2[1] <= '9') {
-            std::string numStr = arg2.substr(1, arg2.size() - 2);
-            program.push_back(new LoadDirectInstruction(r1, parseInt(numStr)));
-        } else {
-            program.push_back(new LoadIndirectInstruction(r1, getRegisterId(arg2)));
-        }
-        return true;
-    }
-
-    // UPDATED: Replaced original implementation with flexible parsing paths
-    bool parseStore(int r1, const std::string& arg1, std::stringstream& ss) {
-        std::string arg2; ss >> arg2;
-        stripComma(arg2);
-        if (!arg1.empty() && arg1[0] == '[') {
-            // STORE [R1], R2 — indirect mode
-            program.push_back(new StoreIndirectInstruction(getRegisterId(arg1), getRegisterId(arg2)));
-        } else if (!arg1.empty() && arg1[0] >= '0' && arg1[0] <= '9') {
-            // STORE 20, R3 — address first (PDF sample format)
-            program.push_back(new StoreDirectInstruction(getRegisterId(arg2), parseInt(arg1)));
-        } else {
-            // STORE R1, 43 — register first (spec section 3.9)
-            program.push_back(new StoreDirectInstruction(r1, parseInt(arg2)));
-        }
-        return true;
-    }
-
-    bool parseStackAndFlags(const std::string& op, int r1, const std::string& arg1) {
-        if (op == "PUSH") { program.push_back(new PushInstruction(r1)); return true; }
-        if (op == "POP") { program.push_back(new PopInstruction(r1)); return true; }
-        if (op == "RESET") { 
-            // FIXED: Decides if parameter targets status bits or raw register indices
-            if (arg1 == "CF" || arg1 == "OF" || arg1 == "UF" || arg1 == "ZF") {
-                program.push_back(new ResetFlagInstruction(arg1));
-                return true;
+                currentToken += c;
             }
         }
-        return false;
+        if (!currentToken.empty() && tokenCount < 4) {
+            tokens[tokenCount++] = currentToken;
+        }
+        return tokenCount; // Return total structural tokens captured
     }
 
 public:
+    // Destructor cleanly recycling polymorphic commands from heap loops memory spaces
     ~Runner() {
         for (int i = 0; i < program.size(); i++) {
             delete program[i];
         }
     }
 
+    // File loading system streaming configuration information directly from text maps
     void loadFromFile(std::string filename) {
         std::ifstream file(filename);
         if (!file.is_open()) {
             std::cout << "Error: Could not open file " << filename << std::endl;
             return;
         }
-        MyQueue<std::string> lineQueue;
+        MyQueue<std::string> lineQueue; // Custom queue instance processing text lines
         std::string line;
         while (std::getline(file, line)) {
             if (!line.empty()) lineQueue.enqueue(line);
         }
         file.close();
 
+        // Process line maps sequentially from the queue
         while (!lineQueue.isEmpty()) {
             decodeAndBuild(lineQueue.dequeue());
         }
     }
 
+    // Decodes assembly instructions and instantiates corresponding instruction objects
     void decodeAndBuild(std::string line) {
-        std::stringstream ss(line);
-        std::string op, arg1, arg2; 
-        ss >> op >> arg1;
-        stripComma(arg1);
-        int r1 = getRegisterId(arg1);
+        std::string tokens[4] = {"", "", "", ""};
+        int count = tokenize(line, tokens);
+        if (count == 0) return; // Skip evaluation routines if parsing empty lines
 
-        if (parseMovInput(op, r1, ss)) return;
-        if (parseShiftRotate(op, r1, ss)) return;
-        if (op == "LOAD") { parseLoad(r1, ss); return; }
-        if (op == "STORE") { parseStore(r1, arg1, ss); return; }
-        if (parseStackAndFlags(op, r1, arg1)) return;
-        
-        // Member 2 Opcode Handlers
-        if (op == "ADD") {
-            ss >> arg2;
-            program.push_back(new AddInstruction(r1, getRegisterId(arg2)));
-        } else if (op == "SUB") {
-            ss >> arg2;
-            program.push_back(new SubInstruction(r1, getRegisterId(arg2)));
-        } else if (op == "MUL") {
-            // UPDATED: Direct immediate vs registration selection
-            ss >> arg2; stripComma(arg2);
-            if (!arg2.empty() && arg2[0] == 'R') {
-                program.push_back(new MulInstruction(r1, getRegisterId(arg2)));
-            } else {
-                program.push_back(new MulImmediateInstruction(r1, parseInt(arg2)));
-            }
-        } else if (op == "DIV") {
-            // UPDATED: Direct immediate vs registration selection
-            ss >> arg2; stripComma(arg2);
-            if (!arg2.empty() && arg2[0] == 'R') {
-                program.push_back(new DivInstruction(r1, getRegisterId(arg2)));
-            } else {
-                program.push_back(new DivImmediateInstruction(r1, parseInt(arg2)));
-            }
-        } else if (op == "INC") {
-            program.push_back(new IncInstruction(r1));
-        } else if (op == "DEC") {
-            program.push_back(new DecInstruction(r1));
-        } else if (op == "RESET") {
-            program.push_back(new ResetRegisterInstruction(r1));
+        std::string op = tokens[0];     // Captured opcode string (ex: "MOV", "ADD")
+        std::string arg1 = tokens[1];   // Target parameter element string
+        stripComma(arg1);
+        int r1 = getRegisterId(arg1);   // Target resolved reference ID assignment mappings
+
+        // I/O Command Branch Handlers
+        if (op == "INPUT") {
+            program.push_back(new InputInstruction(r1));
+            return;
         }
+        if (op == "DISPLAY") {
+            program.push_back(new DisplayInstruction(r1));
+            return;
+        }
+
+        // MOV Variable Parser Branch Configuration
+        if (op == "MOV") {
+            std::string arg2 = tokens[2];
+            if (arg2[0] == 'R') {
+                program.push_back(new MovRegisterInstruction(r1, getRegisterId(arg2)));
+            } else if (arg2[0] == '[') {
+                program.push_back(new MovIndirectInstruction(r1, getRegisterId(arg2)));
+            } else {
+                program.push_back(new MovImmediateInstruction(r1, parseInt(arg2)));
+            }
+            return;
+        }
+
+        // Shifts & Rotates Branch Handlers
+        if (op == "ROL" || op == "ROR" || op == "SHL" || op == "SHR") {
+            std::string arg2 = tokens[2];
+            int countVal = parseInt(arg2);
+            if (op == "ROL") program.push_back(new RotateLeftInstruction(r1, countVal));
+            else if (op == "ROR") program.push_back(new RotateRightInstruction(r1, countVal));
+            else if (op == "SHL") program.push_back(new ShiftLeftInstruction(r1, countVal));
+            else program.push_back(new ShiftRightInstruction(r1, countVal));
+            return;
+        }
+
+        // Memory Command Branch Handlers
+        if (op == "LOAD") {
+            std::string arg2 = tokens[2];
+            if (arg2.size() > 1 && arg2[1] >= '0' && arg2[1] <= '9') {
+                std::string numStr = arg2.substr(1, arg2.size() - 2); // Drops flanking brackets
+                program.push_back(new LoadDirectInstruction(r1, parseInt(numStr)));
+            } else {
+                program.push_back(new LoadIndirectInstruction(r1, getRegisterId(arg2)));
+            }
+            return;
+        }
+        if (op == "STORE") {
+            std::string arg2 = tokens[2];
+            stripComma(arg2);
+            if (!arg1.empty() && arg1[0] == '[') {
+                program.push_back(new StoreIndirectInstruction(getRegisterId(arg1), getRegisterId(arg2)));
+            } else if (!arg1.empty() && arg1[0] >= '0' && arg1[0] <= '9') {
+                program.push_back(new StoreDirectInstruction(getRegisterId(arg2), parseInt(arg1)));
+            } else {
+                program.push_back(new StoreDirectInstruction(r1, parseInt(arg2)));
+            }
+            return;
+        }
+
+        // Stack and Hardware State Reset Controls
+        if (op == "PUSH") { program.push_back(new PushInstruction(r1)); return; }
+        if (op == "POP") { program.push_back(new PopInstruction(r1)); return; }
+        if (op == "RESET") { 
+            if (arg1 == "CF" || arg1 == "OF" || arg1 == "UF" || arg1 == "ZF") {
+                program.push_back(new ResetFlagInstruction(arg1));
+                return;
+            }
+        }
+        
+        // Member 2 Arithmetic Instructions Processing Branch
+        if (op == "ADD" || op == "SUB" || op == "MUL" || op == "DIV") {
+            std::string arg2 = tokens[2];
+            stripComma(arg2);
+            if (op == "ADD") program.push_back(new AddInstruction(r1, getRegisterId(arg2)));
+            else if (op == "SUB") program.push_back(new SubInstruction(r1, getRegisterId(arg2)));
+            else if (op == "MUL") {
+                if (!arg2.empty() && arg2[0] == 'R') program.push_back(new MulInstruction(r1, getRegisterId(arg2)));
+                else program.push_back(new MulImmediateInstruction(r1, parseInt(arg2)));
+            } else if (op == "DIV") {
+                if (!arg2.empty() && arg2[0] == 'R') program.push_back(new DivInstruction(r1, getRegisterId(arg2)));
+                else program.push_back(new DivImmediateInstruction(r1, parseInt(arg2)));
+            }
+            return;
+        } 
+        
+        if (op == "INC") program.push_back(new IncInstruction(r1));
+        else if (op == "DEC") program.push_back(new DecInstruction(r1));
+        else if (op == "RESET") program.push_back(new ResetRegisterInstruction(r1));
     }
 
+    // Main execution driver loop processing commands sequence paths sequentially
     void runProgram() {
         while (cpu.getPC() < program.size()) {
-            program[cpu.getPC()]->execute(cpu);
+            program[cpu.getPC()]->execute(cpu); // Fetch and execute instruction dynamically
         }
-        OutputFormatter::printState(cpu);
+        cpu.dump(); // Prints register, flags, and memory dumps after execution completes
     }
-};
+}
 
+// ============================================================================
+// MAIN SYSTEM ENTRY POINT
+// ============================================================================
+// Written by: aiden
 int main() {
     Runner vmRunner;
     vmRunner.loadFromFile("program.asm");
