@@ -538,7 +538,7 @@ public:
 
         // check to handle division by zero errors
         if (val2 == 0) {
-            s   td::cout << "Error: Division by zero!" << std::endl; // Report error to console
+            std::cout << "Error: Division by zero!" << std::endl; // Report error to console
             cpu.incrementPC(); // Skip to next instruction to avoid infinite loops
             return; //exit function early
         }
