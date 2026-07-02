@@ -4,7 +4,7 @@
 #include <sstream>
 
 // Virtual Machine and Assembly Language Interpreter
-// Combined Workspace: Adam Syafiq, Adam Harith, & Hafiy (Member 3)
+// Combined Workspace: Adam Syafiq, Adam Harith, Airell Aidan, & Hafiy (Member 4)
 
 template <typename T>
 class MyVector {
